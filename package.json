@@ -1,0 +1,14 @@
+{
+  "name": "lamplight",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8791",
+    "login": "XDG_CONFIG_HOME=$HOME/.config/lamplight-cf wrangler login",
+    "whoami": "XDG_CONFIG_HOME=$HOME/.config/lamplight-cf wrangler whoami",
+    "deploy": "XDG_CONFIG_HOME=$HOME/.config/lamplight-cf wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.43.0"
+  }
+}

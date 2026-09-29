@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lamplight</title>
+<meta name="description" content="A shared study room: focus timer, tasks, ambient sound, chat, voice, cameras, screen share and YouTube in sync.">
+<meta property="og:title" content="Lamplight study room">
+<meta property="og:description" content="Join me to study: shared timer, tasks, music, chat and voice.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="/app.css">
+<script>
+  try { const t = localStorage.getItem("lamplight:theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+</script>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-mic-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="m16 13 5.22 3.48a.5.5 0 0 0 .78-.42V7.87a.5.5 0 0 0-.75-.43L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+  <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.25-3.06a.5.5 0 0 1 .75.43v8.2"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-screen" viewBox="0 0 24 24"><path d="m9 10 3-3 3 3"/><path d="M12 13V7"/><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M12 17v4M8 21h8"/></symbol>
+  <symbol id="i-headset" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
+  <symbol id="i-leave" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3.5v17a.5.5 0 0 0 .76.43l13.5-8.5a.5.5 0 0 0 0-.86L6.76 3.07A.5.5 0 0 0 6 3.5Z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-skip" viewBox="0 0 24 24"><path d="M5 4l10 8-10 8Z"/><path d="M19 5v14"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="m17 2-5 5-5-5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5Z"/><path d="M16 9a5 5 0 0 1 0 6M19.36 18.36a9 9 0 0 0 0-12.72"/></symbol>
+  <symbol id="i-vol-x" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+  <symbol id="i-lofi" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24"/><path d="M16 14v6M8 14v6M12 16v6"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5Z"/></symbol>
+  <symbol id="i-brown" viewBox="0 0 24 24"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+  <symbol id="i-lamp" viewBox="0 0 32 32"><path d="M4 15.5C6.5 8 11 5 16 5s9.5 3 12 10.5Z" fill="var(--accent)" stroke="none"/><path d="M8 16.5c2.5 1.2 5.2 1.8 8 1.8s5.5-.6 8-1.8" stroke="var(--glow)" stroke-width="2"/><path d="M16 18.5V26" stroke="var(--brass)" stroke-width="2"/><rect x="9" y="25" width="14" height="3.2" rx="1.6" fill="var(--brass)" stroke="none"/></symbol>
+</svg>
+
+<!-- ================= Landing ================= -->
+<main id="landing" class="landing" hidden>
+  <header class="landing-top">
+    <a class="brand" href="/"><svg class="brand-mark"><use href="#i-lamp"/></svg><span>Lamplight</span></a>
+    <button class="icon-btn theme-toggle" type="button" aria-label="Switch theme"><svg class="i"><use href="#i-moon"/></svg></button>
+  </header>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Study room for two or more</p>
+      <h1>Pull up a chair. Send a friend the link.</h1>
+      <p class="lede">One link opens a room with a shared focus timer, a task list, lo-fi and rain, chat, voice, cameras, screen share, and YouTube that plays in sync for everyone.</p>
+
+      <form id="create-form" class="create-form">
+        <label for="create-name">Your name</label>
+        <div class="field-row">
+          <input id="create-name" name="name" maxlength="32" autocomplete="nickname" placeholder="e.g. Loc" required>
+          <button class="btn btn-primary" type="submit">Open a new room</button>
+        </div>
+      </form>
+
+      <form id="join-form" class="join-form">
+        <label for="join-code">Got a link or room name?</label>
+        <div class="field-row">
+          <input id="join-code" maxlength="200" placeholder="quiet-maple-42 or a lamplight link" autocomplete="off">
+          <button class="btn" type="submit">Join</button>
+        </div>
+        <p class="form-error" id="join-error" hidden></p>
+      </form>
+    </div>
+
+    <figure class="hero-demo" aria-label="Preview of a study room">
+      <div class="demo-card">
+        <div class="demo-top">
+          <span class="chip chip-focus">Focus</span>
+          <span class="demo-round">Round 2 of 4</span>
+        </div>
+        <div class="demo-clock">18:42</div>
+        <div class="ruler demo-ruler" style="--ticks:25;--done:.25"><div class="ruler-fill"></div></div>
+        <ul class="demo-people">
+          <li><span class="avatar" style="--c:#2f7d5b">M</span><span><b>Maya</b><small>Orgo ch. 7 problem set</small></span><svg class="i"><use href="#i-mic"/></svg></li>
+          <li><span class="avatar" style="--c:#b0772b">J</span><span><b>Jonah</b><small>Essay draft, intro</small></span><svg class="i"><use href="#i-mic-off"/></svg></li>
+        </ul>
+        <div class="demo-sound"><svg class="i"><use href="#i-rain"/></svg> Rain, playing for the room</div>
+      </div>
+      <figcaption>Example room</figcaption>
+    </figure>
+  </section>
+
+  <section class="features" aria-label="What's in a room">
+    <div><svg class="i"><use href="#i-timer"/></svg><h3>Shared Pomodoro</h3><p>Anyone can start, pause or skip. Everyone sees the same clock and hears the same chime.</p></div>
+    <div><svg class="i"><use href="#i-list"/></svg><h3>Task list</h3><p>Add what you're working on, tick it off, see what your friends finished.</p></div>
+    <div><svg class="i"><use href="#i-lofi"/></svg><h3>Sound</h3><p>Lo-fi beats, rain, a fireplace or brown noise, generated in the browser. Or put a YouTube video on the stage.</p></div>
+    <div><svg class="i"><use href="#i-headset"/></svg><h3>Call</h3><p>Voice, camera and screen share, peer to peer. Nothing is recorded.</p></div>
+  </section>
+</main>
+
+<!-- ================= Room ================= -->
+<div id="room" class="room" hidden>
+  <header class="topbar">
+    <a class="brand brand-sm" href="/" title="Lamplight home"><svg class="brand-mark"><use href="#i-lamp"/></svg><span>Lamplight</span></a>
+
+    <div class="room-id">
+      <span class="room-name" id="room-name"></span>
+      <button class="btn btn-sm" id="copy-link" type="button"><svg class="i"><use href="#i-link"/></svg><span>Copy invite link</span></button>
+    </div>
+
+    <span class="conn" id="conn" data-state="connecting">Connecting</span>
+
+    <div class="callbar" id="callbar">
+      <button class="btn btn-call" id="call-join" type="button"><svg class="i"><use href="#i-headset"/></svg><span>Join call</span></button>
+      <div class="call-controls" id="call-controls" hidden>
+        <button class="icon-btn" id="call-mic" type="button" aria-label="Mute microphone"><svg class="i"><use href="#i-mic"/></svg></button>
+        <button class="icon-btn" id="call-cam" type="button" aria-label="Turn camera on"><svg class="i"><use href="#i-cam-off"/></svg></button>
+        <button class="icon-btn" id="call-screen" type="button" aria-label="Share screen"><svg class="i"><use href="#i-screen"/></svg></button>
+        <button class="icon-btn danger" id="call-leave" type="button" aria-label="Leave call"><svg class="i"><use href="#i-leave"/></svg></button>
+      </div>
+    </div>
+
+    <button class="icon-btn theme-toggle" type="button" aria-label="Switch theme"><svg class="i"><use href="#i-moon"/></svg></button>
+  </header>
+
+  <main class="grid" id="grid" data-tab="focus">
+    <!-- side: timer, sound, people -->
+    <section class="col side" data-panel="focus">
+      <article class="card timer" id="timer-card" data-phase="focus">
+        <div class="phase-tabs" role="tablist" aria-label="Timer mode">
+          <button type="button" role="tab" data-phase="focus">Focus <span data-dur="focus">25</span></button>
+          <button type="button" role="tab" data-phase="short">Short break <span data-dur="short">5</span></button>
+          <button type="button" role="tab" data-phase="long">Long break <span data-dur="long">15</span></button>
+        </div>
+        <div class="clock" id="clock" aria-live="off">25:00</div>
+        <div class="ruler" id="ruler" style="--ticks:25;--done:0"><div class="ruler-fill"></div></div>
+        <div class="ruler-scale"><span>0</span><span id="ruler-end">25 min</span></div>
+        <div class="timer-controls">
+          <button class="btn btn-primary btn-lg" id="timer-toggle" type="button"><svg class="i"><use href="#i-play"/></svg><span>Start</span></button>
+          <button class="icon-btn" id="timer-reset" type="button" aria-label="Reset timer" title="Reset"><svg class="i"><use href="#i-reset"/></svg></button>
+          <button class="icon-btn" id="timer-skip" type="button" aria-label="Skip to next session" title="Skip"><svg class="i"><use href="#i-skip"/></svg></button>
+          <button class="icon-btn" id="timer-settings-btn" type="button" aria-label="Timer settings" aria-expanded="false" title="Settings"><svg class="i"><use href="#i-sliders"/></svg></button>
+        </div>
+        <div class="rounds"><span class="dots" id="dots"></span><span id="round-label">Round 1 of 4</span></div>
+        <p class="timer-last" id="timer-last">Anyone in the room can start the timer.</p>
+
+        <form class="timer-settings" id="timer-settings" hidden>
+          <div class="settings-grid">
+            <label for="set-focus">Focus<span class="num"><input id="set-focus" type="number" min="1" max="180" inputmode="numeric"><small>min</small></span></label>
+            <label for="set-short">Short break<span class="num"><input id="set-short" type="number" min="1" max="60" inputmode="numeric"><small>min</small></span></label>
+            <label for="set-long">Long break<span class="num"><input id="set-long" type="number" min="1" max="90" inputmode="numeric"><small>min</small></span></label>
+            <label for="set-every">Long break every<span class="num"><input id="set-every" type="number" min="2" max="10" inputmode="numeric"><small>rounds</small></span></label>
+          </div>
+          <label class="check"><input id="set-auto" type="checkbox"> Start the next session automatically</label>
+          <div class="settings-actions">
+            <button class="btn btn-primary btn-sm" type="submit">Save for everyone</button>
+            <button class="btn btn-sm" type="button" id="timer-settings-cancel">Cancel</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="card sound">
+        <header class="card-head">
+          <h2>Sound</h2>
+          <span class="hint">Plays for everyone</span>
+        </header>
+        <div class="tracks" id="tracks">
+          <button type="button" data-track="lofi"><svg class="i"><use href="#i-lofi"/></svg>Lo-fi beats</button>
+          <button type="button" data-track="rain"><svg class="i"><use href="#i-rain"/></svg>Rain</button>
+          <button type="button" data-track="fire"><svg class="i"><use href="#i-fire"/></svg>Fireplace</button>
+          <button type="button" data-track="brown"><svg class="i"><use href="#i-brown"/></svg>Brown noise</button>
+        </div>
+        <div class="sound-row">
+          <button class="icon-btn" id="sound-mute" type="button" aria-label="Mute for me" title="Mute for me"><svg class="i"><use href="#i-vol"/></svg></button>
+          <input id="sound-vol" type="range" min="0" max="100" value="60" aria-label="Volume, just for you">
+          <button class="btn btn-sm" id="sound-stop" type="button" hidden>Stop for everyone</button>
+        </div>
+        <p class="hint" id="sound-by">Pick a sound to play for the room. Volume is just for you.</p>
+      </article>
+
+      <article class="card people">
+        <header class="card-head">
+          <h2>In the room</h2>
+          <span class="hint" id="people-count"></span>
+        </header>
+        <ul class="people-list" id="people-list"></ul>
+        <form class="status-form" id="status-form">
+          <label for="status-input">What are you working on?</label>
+          <input id="status-input" maxlength="80" placeholder="e.g. Chem lab report, section 2" autocomplete="off">
+        </form>
+      </article>
+    </section>
+
+    <!-- stage -->
+    <section class="card stage" id="stage" data-panel="stage">
+      <header class="card-head">
+        <h2>Stage</h2>
+        <div class="stage-actions">
+          <button class="btn btn-sm" id="stage-yt" type="button"><svg class="i"><use href="#i-tv"/></svg><span>Watch YouTube</span></button>
+          <button class="btn btn-sm" id="stage-screen" type="button"><svg class="i"><use href="#i-screen"/></svg><span>Share screen</span></button>
+          <button class="btn btn-sm" id="stage-cam" type="button"><svg class="i"><use href="#i-cam"/></svg><span>Camera</span></button>
+        </div>
+      </header>
+      <form class="yt-form" id="yt-form" hidden>
+        <label for="yt-url">YouTube link</label>
+        <div class="field-row">
+          <input id="yt-url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+          <button class="btn btn-primary" type="submit">Play for everyone</button>
+        </div>
+        <p class="form-error" id="yt-error" hidden></p>
+      </form>
+      <div class="stage-empty" id="stage-empty">
+        <p>Nothing on stage yet. Put on a YouTube video to watch together, share your screen, or turn on your camera.</p>
+      </div>
+      <div class="stage-grid" id="stage-grid"></div>
+      <div class="yt-bar" id="yt-bar" hidden>
+        <svg class="i"><use href="#i-tv"/></svg>
+        <span class="yt-title" id="yt-title"></span>
+        <button class="btn btn-sm" id="yt-close" type="button">Close video for everyone</button>
+      </div>
+    </section>
+
+    <!-- tasks -->
+    <section class="card tasks" data-panel="tasks">
+      <header class="card-head tasks-head">
+        <h2>Tasks</h2>
+        <div class="task-filters" role="tablist" aria-label="Filter tasks">
+          <button type="button" data-filter="all" aria-selected="true">Everyone</button>
+          <button type="button" data-filter="mine" aria-selected="false">Mine</button>
+          <button type="button" data-filter="open" aria-selected="false">Not done</button>
+        </div>
+        <span class="hint task-count" id="task-count"></span>
+        <button type="button" class="link-btn" id="clear-done">Clear finished</button>
+      </header>
+      <form class="task-form" id="task-form">
+        <input id="task-input" maxlength="200" placeholder="Add a task and press Enter" autocomplete="off" aria-label="New task">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </form>
+      <ul class="task-list" id="task-list"></ul>
+      <p class="empty" id="task-empty">No tasks yet. Add the first thing you want to get through this session.</p>
+    </section>
+
+    <!-- chat -->
+    <section class="card chat" data-panel="chat">
+      <header class="card-head"><h2>Chat</h2></header>
+      <ol class="chat-log" id="chat-log" aria-live="polite"></ol>
+      <form class="chat-form" id="chat-form">
+        <input id="chat-input" maxlength="1000" placeholder="Message the room" autocomplete="off" aria-label="Message">
+        <button class="icon-btn accent" type="submit" aria-label="Send"><svg class="i"><use href="#i-send"/></svg></button>
+      </form>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar" aria-label="Sections">
+    <button type="button" data-tab="focus" aria-selected="true"><svg class="i"><use href="#i-timer"/></svg>Focus</button>
+    <button type="button" data-tab="tasks"><svg class="i"><use href="#i-list"/></svg>Tasks</button>
+    <button type="button" data-tab="stage"><svg class="i"><use href="#i-tv"/></svg>Stage<span class="badge" id="stage-badge" hidden></span></button>
+    <button type="button" data-tab="chat"><svg class="i"><use href="#i-chat"/></svg>Chat<span class="badge" id="chat-badge" hidden></span></button>
+  </nav>
+
+  <div id="audio-sink" hidden></div>
+</div>
+
+<dialog class="join-dialog" id="join-dialog">
+  <form method="dialog" id="join-dialog-form">
+    <svg class="brand-mark big"><use href="#i-lamp"/></svg>
+    <h2>Join <span id="join-room-name"></span></h2>
+    <p class="hint" id="join-who">Nobody else is here yet.</p>
+    <label for="join-name">Your name</label>
+    <input id="join-name" maxlength="32" autocomplete="nickname" required placeholder="e.g. Loc">
+    <fieldset class="swatches" id="swatches"><legend>Your color</legend></fieldset>
+    <button class="btn btn-primary btn-lg" type="submit">Enter the room</button>
+  </form>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
