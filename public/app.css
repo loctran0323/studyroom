@@ -319,6 +319,20 @@ label { font-size: 13px; font-weight: 700; color: var(--muted); }
 @keyframes bob { 50% { transform: translateY(-2px); } }
 .sound-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; }
 
+/* ---------- spotify ---------- */
+.sp-now { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; margin-bottom: 10px; }
+.sp-now img { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: var(--surface-2); }
+.sp-meta { display: grid; gap: 2px; min-width: 0; }
+.sp-meta b, .sp-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-meta b { font-size: 15px; }
+.sp-meta span { font-size: 13px; color: var(--muted); }
+.sp-bar { height: 4px; border-radius: 2px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.sp-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s linear; }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sp-actions:empty { display: none; }
+.sp-actions a.btn { text-decoration: none; }
+.sp-account { margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+
 /* ---------- people ---------- */
 .people-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .person { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }

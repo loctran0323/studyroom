@@ -13,5 +13,8 @@
     "bindings": [{ "name": "ROOMS", "class_name": "StudyRoom" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["StudyRoom"] }],
+  // Spotify app client ID (public; the sign-in uses PKCE, so there is no secret).
+  // Create one at https://developer.spotify.com/dashboard
+  "vars": { "SPOTIFY_CLIENT_ID": "" },
   "observability": { "enabled": true }
 }

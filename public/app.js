@@ -1,5 +1,6 @@
 import * as sound from "/sound.js";
 import { createCall } from "/call.js";
+import * as spotify from "/spotify.js";
 
 // ---------- small helpers ----------
 const $ = (s, root = document) => root.querySelector(s);
@@ -100,7 +101,7 @@ function parseRoom(v) {
 const route = location.pathname.match(/^\/r\/([A-Za-z0-9-]+)\/?$/);
 const S = {
   room: null, you: null, offset: 0, entered: false,
-  timer: null, tasks: [], chat: [], sound: {}, video: {}, members: [],
+  timer: null, tasks: [], chat: [], sound: {}, video: {}, spotify: {}, members: [],
   filter: store.get("filter") || "all",
   soundMuted: store.get("soundMuted") === "1",
   pinned: null, tab: "focus", unread: 0, editing: null, tasksDirty: false,
@@ -156,6 +157,13 @@ function enterRoom(room) {
   setInterval(pollVideo, 1000);
   setInterval(speakingLoop, 150);
   setInterval(() => { if (ws?.readyState === 1) ws.send('{"t":"ping"}'); }, 25000);
+  setInterval(spotifyTick, 4000);
+  setInterval(renderSpotifyProgress, 1000);
+  setupSpotify();
+  try {
+    const flash = JSON.parse(store.get("flash") || "null");
+    if (flash) { store.set("flash", "null"); toast(flash.text, flash.kind); }
+  } catch {}
 }
 
 function setConn(state) {
@@ -206,6 +214,9 @@ function handle(m) {
       renderCall();
       applySound(m.sound);
       applyVideo();
+      S.spotify = m.spotify || {};
+      if (SP.wasSharing && !S.spotify.dj) shareSpotify(); // we dropped and came back
+      onSpotify();
       break;
     case "members":
       diffMembers(m.members);
@@ -233,6 +244,11 @@ function handle(m) {
       S.offset = m.now - Date.now();
       S.video = m.video;
       applyVideo();
+      break;
+    case "spotify":
+      S.offset = m.now - Date.now();
+      S.spotify = m.spotify || {};
+      onSpotify();
       break;
     case "signal": call.onSignal(m.from, m.data); break;
   }
@@ -712,6 +728,246 @@ function pollVideo() {
   yt.lastWall = now;
 }
 
+// ---------- spotify ----------
+// One person shares what's playing on their Spotify. Everyone else sees it, and
+// anyone with Premium can listen along: their own Spotify plays the same track at
+// the same spot and follows skips, pauses and seeks.
+const SP = { enabled: false, profile: null, listening: false, device: null, playingUri: null, paused: true, busy: false, wasSharing: false };
+const amDj = () => !!S.spotify?.dj && S.spotify.dj.key === me.key;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function spotifyExpected() {
+  const s = S.spotify;
+  return s.playing ? s.progressMs + (serverNow() - s.at) : s.progressMs;
+}
+
+async function setupSpotify() {
+  SP.enabled = await spotify.init();
+  if (SP.enabled && spotify.connected()) await loadSpotifyProfile();
+  renderSpotify();
+}
+async function loadSpotifyProfile() {
+  const p = await spotify.profile();
+  if (p.error === "not_registered") {
+    spotify.logout();
+    SP.profile = null;
+    toast("Spotify hasn't approved this account for Lamplight yet. The site owner needs to add your Spotify email in their Spotify developer dashboard.", "error");
+    return;
+  }
+  SP.profile = p.error ? null : p;
+}
+
+function onSpotify() {
+  const s = S.spotify;
+  if (amDj()) {
+    SP.wasSharing = true;
+    if (SP.listening) stopListening();
+  } else if (s.dj || SP.wasSharing) {
+    SP.wasSharing = false;
+  }
+  renderSpotify();
+  followDJ();
+}
+
+async function spotifyTick() {
+  if (!SP.enabled || !S.entered) return;
+  if (amDj() && spotify.connected() && !SP.busy) {
+    SP.busy = true;
+    try {
+      const np = await spotify.nowPlaying();
+      const s = S.spotify;
+      const changed = (np.track?.uri || null) !== (s.track?.uri || null) ||
+        np.playing !== s.playing || Math.abs(np.progressMs - spotifyExpected()) > 2500;
+      if (changed) send({ t: "spotify:update", ...np });
+    } catch {} finally {
+      SP.busy = false;
+    }
+  }
+  if (SP.listening && SP.device) driftCheck();
+}
+
+async function shareSpotify() {
+  try {
+    const np = await spotify.nowPlaying();
+    send({ t: "spotify:share", ...np });
+    if (!np.track) toast("Shared. Play something in Spotify and it'll show up here.");
+  } catch (e) {
+    if (!spotify.connected()) {
+      SP.profile = null;
+      renderSpotify();
+      toast("Your Spotify sign-in expired. Connect again.", "error");
+    } else if (e.status === 403) {
+      toast("Spotify hasn't approved this account for Lamplight yet. The site owner needs to add your Spotify email in their Spotify developer dashboard.", "error");
+    } else {
+      toast("Couldn't read your Spotify. Try again in a moment.", "error");
+    }
+  }
+}
+
+async function listenAlong() {
+  SP.listening = true;
+  renderSpotify();
+  try {
+    SP.device = await spotify.startPlayer((msg) => console.warn("Spotify playback:", msg));
+  } catch (e) {
+    if (e.message === "premium") {
+      SP.listening = false;
+      renderSpotify();
+      return toast("Listening along needs Spotify Premium.", "error");
+    }
+    if (e.message === "auth") {
+      SP.listening = false;
+      spotify.logout();
+      SP.profile = null;
+      renderSpotify();
+      return toast("Your Spotify sign-in expired. Connect again.", "error");
+    }
+    SP.device = null; // phones can't play Spotify inside a web page, so drive the Spotify app instead
+  }
+  SP.playingUri = null;
+  SP.paused = true;
+  renderSpotify();
+  await followDJ();
+}
+
+async function followDJ() {
+  if (!SP.listening) return;
+  const s = S.spotify;
+  const canPlay = s.dj && s.track && !s.track.local && s.playing;
+  try {
+    if (!canPlay) {
+      if (!SP.paused) {
+        await spotify.pause(SP.device);
+        SP.paused = true;
+      }
+      return;
+    }
+    if (SP.playingUri !== s.track.uri || SP.paused) {
+      let r = await spotify.play(SP.device, s.track.uri, spotifyExpected());
+      if (r.status === 404 && SP.device) {
+        await sleep(1200); // a brand-new in-page device can take a moment to register
+        r = await spotify.play(SP.device, s.track.uri, spotifyExpected());
+      }
+      if (r.status === 404) {
+        stopListening();
+        return toast("Open Spotify on this device and play any song, then tap Listen along again.", "error");
+      }
+      if (r.status === 403) {
+        stopListening();
+        return toast("Listening along needs Spotify Premium.", "error");
+      }
+      if (!r.ok) return;
+      SP.playingUri = s.track.uri;
+      SP.paused = false;
+    } else if (SP.device) {
+      await driftCheck();
+    }
+  } catch (e) {
+    console.warn("Spotify:", e);
+  }
+}
+
+async function driftCheck() {
+  const s = S.spotify;
+  if (!s.playing || !s.track || SP.paused) return;
+  const st = await spotify.localState().catch(() => null);
+  if (!st || st.paused || !st.uris.includes(s.track.uri)) return;
+  const exp = spotifyExpected();
+  if (Math.abs(st.position - exp) > 3000) spotify.seek(exp);
+}
+
+function stopListening() {
+  if (!SP.listening) return;
+  SP.listening = false;
+  if (SP.device) spotify.stopPlayer();
+  else if (!SP.paused) spotify.pause(null).catch(() => {});
+  SP.device = null;
+  SP.playingUri = null;
+  SP.paused = true;
+  renderSpotify();
+}
+
+function disconnectSpotify() {
+  stopListening();
+  if (amDj()) send({ t: "spotify:stop" });
+  SP.wasSharing = false;
+  spotify.logout();
+  SP.profile = null;
+  renderSpotify();
+}
+
+async function spotifyCallback() {
+  await spotify.init();
+  const { back, error } = await spotify.handleCallback();
+  store.set("flash", JSON.stringify(error ? { text: error, kind: "error" } : { text: "Spotify connected." }));
+  location.replace(back);
+}
+
+function renderSpotify() {
+  const card = $("#spotify-card");
+  card.hidden = !SP.enabled;
+  if (!SP.enabled) return;
+  const s = S.spotify || {};
+  const conn = spotify.connected();
+  const dj = s.dj;
+  const mine = amDj();
+  const djName = dj ? (mine ? "You" : dj.name) : "";
+
+  const now = $("#sp-now");
+  now.hidden = !(dj && s.track);
+  if (dj && s.track) {
+    const art = $("#sp-art");
+    if (s.track.art) { art.src = s.track.art; art.hidden = false; } else art.removeAttribute("src");
+    $("#sp-title").textContent = s.track.name;
+    $("#sp-artist").textContent = s.track.artists;
+  }
+  $("#sp-state").textContent = dj ? (mine ? "You're sharing" : `${dj.name} is sharing`) : "";
+
+  let msg;
+  if (!dj) msg = conn ? "Share what you're playing so friends can listen along." : "Connect Spotify to share what you're playing, or to listen along when a friend shares.";
+  else if (!s.track) msg = mine ? "Nothing's playing on your Spotify right now. Start something in the Spotify app." : `Nothing's playing on ${djName}'s Spotify right now.`;
+  else if (s.track.local) msg = "This is a file on their computer, so it can't play for anyone else.";
+  else if (!s.playing) msg = mine ? "Paused in your Spotify." : `${djName} paused.`;
+  else if (mine) msg = "Plays from your Spotify app. Friends with Premium can listen along.";
+  else if (SP.listening) msg = SP.device ? "Listening along in this tab." : "Listening along in your Spotify app.";
+  else msg = conn ? "Tap Listen along to hear it too. Needs Spotify Premium." : "Connect Spotify to listen along. Needs Spotify Premium.";
+  $("#sp-msg").textContent = msg;
+
+  const actions = $("#sp-actions");
+  actions.replaceChildren();
+  const btn = (label, iconName, onclick, primary) =>
+    el("button", { type: "button", class: "btn btn-sm" + (primary ? " btn-primary" : ""), onclick }, icon(iconName), label);
+  if (!conn) {
+    actions.append(btn(dj ? "Connect to listen along" : "Connect Spotify", "headphones", () => spotify.login(location.pathname), true));
+  } else if (!dj) {
+    actions.append(btn("Share what I'm playing", "share", shareSpotify, true));
+  } else if (mine) {
+    actions.append(btn("Stop sharing", "x", () => { SP.wasSharing = false; send({ t: "spotify:stop" }); }));
+  } else {
+    actions.append(SP.listening
+      ? btn("Stop listening", "x", stopListening)
+      : btn("Listen along", "headphones", listenAlong, true));
+    actions.append(btn("Share mine instead", "share", shareSpotify));
+  }
+  if (dj && s.track?.url) {
+    actions.append(el("a", { class: "btn btn-sm", href: s.track.url, target: "_blank", rel: "noopener noreferrer" }, icon("external"), "Open in Spotify"));
+  }
+
+  const account = $("#sp-account");
+  account.hidden = !conn;
+  if (conn) {
+    account.replaceChildren(`Connected as ${SP.profile?.name || "your Spotify account"} · `,
+      el("button", { type: "button", class: "link-btn", onclick: disconnectSpotify }, "Disconnect"));
+  }
+  renderSpotifyProgress();
+}
+
+function renderSpotifyProgress() {
+  const s = S.spotify;
+  const fill = $("#sp-fill");
+  if (!fill || !s?.track?.durationMs) return;
+  fill.style.width = `${Math.min(100, (spotifyExpected() / s.track.durationMs) * 100).toFixed(2)}%`;
+}
+
 // ---------- stage (video, screens, cameras) ----------
 const tileEls = new Map();
 function stageTiles() {
@@ -1089,5 +1345,6 @@ function wireRoom() {
 }
 
 // ---------- start ----------
-if (route && ROOM_RE.test(route[1].toLowerCase())) enterRoom(route[1].toLowerCase());
+if (location.pathname === "/spotify") spotifyCallback();
+else if (route && ROOM_RE.test(route[1].toLowerCase())) enterRoom(route[1].toLowerCase());
 else showLanding();

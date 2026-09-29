@@ -24,6 +24,21 @@ separate from any other wrangler login on this machine.
 
 Rooms live at `/r/<room-name>`. Anyone with the link can join.
 
+## Spotify
+
+One person shares what's playing on their Spotify; anyone with Premium can
+listen along (their own Spotify plays the same song at the same spot).
+
+1. Create an app at https://developer.spotify.com/dashboard. Pick "Web API"
+   and "Web Playback SDK", and add these redirect URIs:
+   - `https://studyroom.loctran0323.workers.dev/spotify`
+   - `http://127.0.0.1:8791/spotify` (local dev)
+2. Put the app's Client ID in `wrangler.jsonc` under `vars.SPOTIFY_CLIENT_ID`
+   (it's public; sign-in uses PKCE, so there's no secret). For local dev, put
+   `SPOTIFY_CLIENT_ID=...` in `.dev.vars`.
+3. New Spotify apps are in development mode: only accounts listed under the
+   app's User Management can connect. Add your friends' Spotify emails there.
+
 ## Limits
 
 - Calls are a peer-to-peer mesh, which is best for 2–6 people. There's no TURN relay, so

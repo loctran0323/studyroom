@@ -19,17 +19,34 @@ const DEFAULT_TIMER = {
 
 const DEFAULT_SOUND = { track: null, playing: false, by: null };
 const DEFAULT_VIDEO = { videoId: null, title: "", playing: false, pos: 0, at: 0, by: null };
+const DEFAULT_SPOTIFY = { dj: null, track: null, playing: false, progressMs: 0, at: 0 };
 
 const TRACKS = new Set(["lofi", "rain", "fire", "brown"]);
 const PHASES = new Set(["focus", "short", "long"]);
 const PHASE_LABEL = { focus: "Focus", short: "Short break", long: "Long break" };
 
 const str = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+const num = (v, max) => (Number.isFinite(Number(v)) ? Math.min(max, Math.max(0, Math.round(Number(v)))) : 0);
+
+function cleanTrack(t) {
+  if (!t || typeof t !== "object" || typeof t.uri !== "string") return null;
+  if (!/^spotify:(track|episode|local):\S{1,280}$/.test(t.uri)) return null;
+  const art = typeof t.art === "string" && /^https:\/\/([a-z0-9-]+\.)*(scdn\.co|spotifycdn\.com)\//.test(t.art) ? t.art.slice(0, 300) : "";
+  const url = typeof t.url === "string" && /^https:\/\/open\.spotify\.com\//.test(t.url) ? t.url.slice(0, 300) : "";
+  return {
+    uri: t.uri, name: str(t.name, 200), artists: str(t.artists, 200), art, url,
+    durationMs: num(t.durationMs, 24 * 3600e3), local: !!t.local || t.uri.startsWith("spotify:local:"),
+  };
+}
+
 const id = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    if (url.pathname === "/api/config") {
+      return Response.json({ spotifyClientId: env.SPOTIFY_CLIENT_ID || null }, { headers: { "Cache-Control": "no-store" } });
+    }
     const m = url.pathname.match(/^\/api\/room\/([^/]+)\/ws$/);
     if (m) {
       const name = decodeURIComponent(m[1]).toLowerCase();
@@ -46,12 +63,13 @@ export class StudyRoom extends DurableObject {
     super(ctx, env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
     ctx.blockConcurrencyWhile(async () => {
-      const s = await ctx.storage.get(["timer", "tasks", "chat", "sound", "video"]);
+      const s = await ctx.storage.get(["timer", "tasks", "chat", "sound", "video", "spotify"]);
       this.timer = { ...structuredClone(DEFAULT_TIMER), ...(s.get("timer") || {}) };
       this.tasks = s.get("tasks") || [];
       this.chat = s.get("chat") || [];
       this.sound = s.get("sound") || { ...DEFAULT_SOUND };
       this.video = s.get("video") || { ...DEFAULT_VIDEO };
+      this.spotify = s.get("spotify") || { ...DEFAULT_SPOTIFY };
     });
   }
 
@@ -89,6 +107,7 @@ export class StudyRoom extends DurableObject {
   pushTasks() { this.broadcast({ t: "tasks", tasks: this.tasks }); }
   pushSound() { this.broadcast({ t: "sound", sound: this.sound }); }
   pushVideo() { this.broadcast({ t: "video", video: this.video, now: Date.now() }); }
+  pushSpotify() { this.broadcast({ t: "spotify", spotify: this.spotify, now: Date.now() }); }
 
   async addChat(entry) {
     const msg = { id: id(), at: Date.now(), ...entry };
@@ -152,7 +171,7 @@ export class StudyRoom extends DurableObject {
       setMe({ joined: true, name, color, key: str(msg.key, 40), status: str(msg.status, 80), call: false, muted: false, mic: null, cam: null, screen: null });
       this.send(ws, {
         t: "init", you: me.id, now: Date.now(),
-        timer: this.timer, tasks: this.tasks, chat: this.chat, sound: this.sound, video: this.video,
+        timer: this.timer, tasks: this.tasks, chat: this.chat, sound: this.sound, video: this.video, spotify: this.spotify,
         members: this.members(),
       });
       this.pushMembers();
@@ -325,6 +344,32 @@ export class StudyRoom extends DurableObject {
         return;
       }
 
+      // ----- spotify: one person shares, others listen along -----
+      case "spotify:share":
+      case "spotify:update": {
+        const taking = msg.t === "spotify:share";
+        if (!taking && this.spotify.dj?.key !== me.key) return;
+        const wasDj = this.spotify.dj?.key === me.key;
+        this.spotify = {
+          dj: { key: me.key, name: who },
+          track: cleanTrack(msg.track),
+          playing: !!msg.playing,
+          progressMs: num(msg.progressMs, 24 * 3600e3),
+          at: Date.now(),
+        };
+        await this.ctx.storage.put("spotify", this.spotify);
+        this.pushSpotify();
+        if (taking && !wasDj) await this.sys(`${who} is sharing their Spotify.`);
+        return;
+      }
+      case "spotify:stop": {
+        if (!this.spotify.dj) return;
+        this.spotify = { ...DEFAULT_SPOTIFY };
+        await this.ctx.storage.put("spotify", this.spotify);
+        this.pushSpotify();
+        return;
+      }
+
       // ----- call (voice, camera, screen) -----
       case "call": {
         const sid = (v) => (typeof v === "string" && /^[\w{}-]{1,64}$/.test(v) ? v : null);
@@ -354,10 +399,21 @@ export class StudyRoom extends DurableObject {
     try { ws.close(code === 1005 ? 1000 : code, "bye"); } catch {}
     ws.serializeAttachment({ ...(ws.deserializeAttachment() || {}), joined: false });
     this.pushMembers();
+    await this.dropMissingDj();
+  }
+
+  // Sharing ends when the person sharing leaves. Their page re-shares if it reconnects.
+  async dropMissingDj() {
+    const dj = this.spotify.dj;
+    if (!dj || this.members().some((m) => m.key === dj.key)) return;
+    this.spotify = { ...DEFAULT_SPOTIFY };
+    await this.ctx.storage.put("spotify", this.spotify);
+    this.pushSpotify();
   }
 
   async webSocketError(ws) {
     ws.serializeAttachment({ ...(ws.deserializeAttachment() || {}), joined: false });
     this.pushMembers();
+    await this.dropMissingDj();
   }
 }
