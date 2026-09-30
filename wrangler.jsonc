@@ -15,6 +15,6 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["StudyRoom"] }],
   // Spotify app client ID (public; the sign-in uses PKCE, so there is no secret).
   // Create one at https://developer.spotify.com/dashboard
-  "vars": { "SPOTIFY_CLIENT_ID": "" },
+  "vars": { "SPOTIFY_CLIENT_ID": "0e3e015610434d1fa072572f2954d646" },
   "observability": { "enabled": true }
 }
